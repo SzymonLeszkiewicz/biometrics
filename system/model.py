@@ -120,7 +120,11 @@ class Model:
         face_enc = face_recognition.face_encodings(img)[0]
         self.encodings.append(face_enc)
         self.names.append(name)
-
+        # TODO: maybe it is needed to retrain SVM ???
+        # TODO: create new instance of model and retrain it? Very long xD
+        self.clf_svm = svm.SVC(**self.clf_svm.get_params())  # create new instance with the same configuration
+        self.clf_svm.fit(self.encodings, self.names)  # TODO: is it the only option?
+        
     def verify_user(self, image_path: str):
         """
         Method to verify user's image.
