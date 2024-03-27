@@ -1,3 +1,3 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from .model import Model
+from .facerecognitionsystem import FaceRecognitionSystem

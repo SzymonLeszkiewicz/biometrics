@@ -1,5 +1,3 @@
-#!/usr/bin/python
-# -*- coding: utf-8 -*-
 import os
 import pickle
 from typing import Optional
@@ -11,7 +9,7 @@ from omegaconf import OmegaConf
 from sklearn import svm
 
 
-class Model:
+class FaceRecognitionSystem:
     """
     Model for embedding retrieval. Wrapper for face_recognition
     """
@@ -40,17 +38,17 @@ class Model:
         # TODO: I dont know if this is even needed.
         return NotImplementedError
 
-    def _train_embeddings_names(self, train_dir_path: str):
+    def _train_encodings_names(self, train_dir_path: str):
         """
         Method to fit the biometric model. Copy from example face_recognition_svm.py
         """
         # The training data would be all the face encodings from all the known images and the labels are their names
-
         for person in os.listdir(train_dir_path):
             pix = os.listdir(train_dir_path + "/" + person)
 
             # Loop through each training image for the current person
             for person_img in pix:
+
                 # Get the face encodings for the face in each image file
                 face = face_recognition.load_image_file(
                     train_dir_path + "/" + person + "/" + person_img
@@ -63,6 +61,7 @@ class Model:
                     # Add face encoding for current image with corresponding label (name) to the training data
                     self.encodings.append(face_enc)
                     self.names.append(person)
+
                 else:
                     print(
                         person
@@ -104,7 +103,7 @@ class Model:
         verbose=True,
     ) -> svm.SVC:
 
-        self._train_embeddings_names(train_dir_path)
+        self._train_encodings_names(train_dir_path)
 
         self.clf_svm = svm.SVC(
             C=C, kernel=kernel, degree=degree, gamma=gamma, coef0=coef0, verbose=verbose
@@ -114,6 +113,7 @@ class Model:
         return self.clf_svm
 
     def add_user(self, name: str, image_path: str):
+        # TODO: make a method to accept list of images and names.
         """
         Method to add user.
         :param name: Name of the user
@@ -138,6 +138,6 @@ class Model:
         """
         img = face_recognition.load_image_file(image_path)
         encoding = face_recognition.face_encodings(img)
-        name = self.clf_svm.predict([encoding])
+        name = self.clf_svm.predict(encoding)
 
         return name
