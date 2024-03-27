@@ -17,6 +17,8 @@ def join_subsets(path, subset, new_name):
                 # Copy the image
                 os.rename(os.path.join(path, sun, per, img), os.path.join(path, new_name, per, img))
 
+join_subsets(path, subset, new_name)
+
 os.makedirs(os.path.join(path, 'new_test'), exist_ok=True)
 os.makedirs(os.path.join(path, 'new_train'), exist_ok=True)
 
