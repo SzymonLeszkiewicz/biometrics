@@ -1,13 +1,14 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-from PIL import Image
 import os
-import face_recognition
-from sklearn import svm
 import pickle
-from omegaconf import OmegaConf
 from typing import Optional
+
+import face_recognition
 import yaml
+from PIL import Image
+from omegaconf import OmegaConf
+from sklearn import svm
 
 
 class Model:
@@ -73,7 +74,7 @@ class Model:
     def save_system(self, save_dir: str, system_configuration_name: str = "system"):
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-            
+
         paths_set = {
             "svm_pickle_path": os.path.join(save_dir, "svm.pkl"),
             "encodings_path": os.path.join(save_dir, "encodings.pkl"),
@@ -88,7 +89,9 @@ class Model:
         print(f"System saved to directory: {save_dir}")
         with open(f"config/{system_configuration_name}.yaml", "w") as config_file:
             yaml.dump(paths_set, config_file, sort_keys=True)
-        print(f"Config file created and saved, filename: config/{system_configuration_name}.yaml")
+        print(
+            f"Config file created and saved, filename: config/{system_configuration_name}.yaml"
+        )
 
     def fit_svm(
         self,
@@ -122,9 +125,11 @@ class Model:
         self.names.append(name)
         # TODO: maybe it is needed to retrain SVM ???
         # TODO: create new instance of model and retrain it? Very long xD
-        self.clf_svm = svm.SVC(**self.clf_svm.get_params())  # create new instance with the same configuration
+        self.clf_svm = svm.SVC(
+            **self.clf_svm.get_params()
+        )  # create new instance with the same configuration
         self.clf_svm.fit(self.encodings, self.names)  # TODO: is it the only option?
-        
+
     def verify_user(self, image_path: str):
         """
         Method to verify user's image.
