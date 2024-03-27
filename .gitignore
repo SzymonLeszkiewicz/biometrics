@@ -162,3 +162,5 @@ cython_debug/
 # data folder
 data/
 	!data/.gitkeep
+config/
+	!config/.gitkeep
