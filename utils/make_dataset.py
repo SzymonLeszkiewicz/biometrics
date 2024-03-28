@@ -1,7 +1,5 @@
 import os
 
-
-
 path = '../data/'
 subset = ['train', 'test', 'val']
 new_name = 'all'
@@ -25,11 +23,13 @@ os.makedirs(os.path.join(path, 'new_train'), exist_ok=True)
 test_size = 0.2
 for person in os.listdir(os.path.join(path, 'all')):
     photos = os.listdir(os.path.join(path, 'all', person))
-    print(photos)
     size_test = int(len(photos) * test_size)
     size_train = len(photos) - size_test
     os.makedirs(os.path.join(path, 'new_test', person), exist_ok=True)
     os.makedirs(os.path.join(path, 'new_train', person), exist_ok=True)
+    if size_test == 0:
+        size_test = 1
+        size_train -= 1
     for i in range(size_test):
         os.rename(os.path.join(path, 'all', person, photos[i]), os.path.join(path, 'new_test', person, photos[i]))
     for i in range(size_train):
