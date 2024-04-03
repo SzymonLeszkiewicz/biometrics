@@ -108,7 +108,7 @@ class VerificationSystem:
         )
 
     @staticmethod
-    def calculate_grant_accessed_rate(
+    def calculate_access_granted_rate(
         df_users_verification_matrix: pd.DataFrame,
     ) -> float:
         return df_users_verification_matrix["grant_access"].sum() / len(
