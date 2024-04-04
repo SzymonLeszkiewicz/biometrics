@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from typing import Optional
 
 
 class GaussianTransformer:
@@ -65,7 +66,9 @@ class GaussianTransformer:
 
 
 def luminance_transform(
-    input_image: np.ndarray, scaling_type: str = "linear", scale_factor: float = 0.5
+    input_image: np.ndarray,
+    scaling_type: str = "linear",
+    scale_factor: Optional[float] = 0.5,
 ) -> np.ndarray:
     """
     Function to perform luminance transformation
