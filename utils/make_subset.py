@@ -1,7 +1,6 @@
 import os
-'''
-make smaller dataset
-'''
+
+# TODO do usunięcia?
 size = 5
 dataset = 'train'
 
