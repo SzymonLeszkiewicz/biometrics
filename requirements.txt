@@ -1,0 +1,16 @@
+# Python 3.11.8
+
+black[jupyter] == 24.3.0
+deepface == 0.0.89
+ipywidgets == 8.1.2
+notebook == 7.1.2
+opencv-python == 4.9.0.80
+matplotlib == 3.8.3
+numpy == 1.26.4
+pandas == 2.2.1
+scikit-learn == 1.4.0
+setuptools==69.2.0
+tensorflow == 2.15.0 # https://github.com/serengil/deepface/issues/1106
+tf-keras == 2.15.0
+tqdm == 4.66.2
+wheel == 0.43.0
