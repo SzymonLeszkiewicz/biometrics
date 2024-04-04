@@ -1,0 +1,112 @@
+import cv2
+import numpy as np
+from typing import Optional
+
+
+class GaussianTransformer:
+    """
+    Class to transform images with gaussian noise.
+    """
+
+    def __init__(self):
+        """
+        Initialize a GaussianTransformer
+        """
+        self.PSNR_thresholds = {
+            50: (50, 80),
+            40: (40, 50),
+            30: (30, 40),
+            20: (20, 30),
+            10: (10, 20),
+        }  # thresholds for transformations
+
+    # with PSNR
+
+    def transform(
+        self, input_image: np.ndarray, PSNR_dB=20, verbose=True
+    ) -> np.ndarray:
+        """
+
+        :param input_image: Image to transform
+        :param PSNR_dB: Value of PSNR in dB
+        :param verbose: If True, generated PSNR value will be printed
+        :return: transformed image
+        """
+        sigma = np.sqrt(
+            (255**2) / (10 ** (PSNR_dB / 10))
+        )  # standard deviation based on PSNR_dB
+        noise = np.random.normal(loc=0, scale=sigma, size=input_image.shape)
+        noisy_image = np.clip(input_image + noise, 0, 255).astype(np.uint8)
+        generated_psnr = cv2.PSNR(input_image, noisy_image)
+        if PSNR_dB in list(self.PSNR_thresholds.keys()) and verbose:
+            lower_th = self.PSNR_thresholds[PSNR_dB][0]
+            upper_th = self.PSNR_thresholds[PSNR_dB][1]
+            if lower_th <= np.round(generated_psnr) <= upper_th:
+                print(
+                    f"PSNR == {np.round(generated_psnr)} is in range {lower_th}, {upper_th}"
+                )
+            else:
+                print(
+                    f"Could not generate noise in range for PSNR={PSNR_dB}, generated PSNR={generated_psnr}"
+                )
+
+        return noisy_image
+
+    def transform_directory(
+        self,
+        images_transformation_directory: str = None,
+        transformed_images_directory: str = None,
+    ):
+        """
+
+        :param images_transformation_directory: Directory from which images will be transformed
+        :param transformed_images_directory: Directory to which transformed images will be stored/
+        """
+        raise NotImplementedError
+
+
+def luminance_transform(
+    input_image: np.ndarray,
+    scaling_type: str = "linear",
+    scale_factor: Optional[float] = 0.5,
+) -> np.ndarray:
+    """
+    Function to perform luminance transformation
+    :param input_image: Image to be transformed
+    :param scaling_type: Type of transformation, available: linear, quadratic, constant
+    :param scale_factor: Factor of transformation scaling. Refers to linear and constant scaling_type
+    :return: Transformed image.
+    """
+    yuv_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2YUV)  # convert image
+    y_channel = yuv_image[..., 0].astype(np.float32)  # get y_channel only
+    if scaling_type == "linear":
+        transformed_y_channel = np.clip(y_channel * scale_factor, 0, 255).astype(
+            np.uint8
+        )
+        yuv_image[..., 0] = transformed_y_channel
+        transformed_image = cv2.cvtColor(yuv_image, cv2.COLOR_YUV2BGR)
+
+    elif scaling_type == "quadratic":
+        transformed_y_channel = y_channel**2
+        min_value = np.min(transformed_y_channel)
+        max_value = np.max(transformed_y_channel)
+        scaled_y_channel = (
+            255 * (transformed_y_channel - min_value) / (max_value - min_value)
+        ).astype(
+            np.uint8
+        )  # perform min max scaling with range 0, 255
+        yuv_image[..., 0] = scaled_y_channel
+        transformed_image = cv2.cvtColor(yuv_image, cv2.COLOR_YUV2BGR)
+
+    elif scaling_type == "constant":
+        transformed_y_channel = np.clip(y_channel + scale_factor, 0, 255).astype(
+            np.uint8
+        )
+        yuv_image[..., 0] = transformed_y_channel
+        transformed_image = cv2.cvtColor(yuv_image, cv2.COLOR_YUV2BGR)
+    else:
+        raise ValueError(
+            "Unknown scaling type, possible scaling types: linear, quadratic, constant"
+        )
+
+    return transformed_image
