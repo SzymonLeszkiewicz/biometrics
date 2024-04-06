@@ -4,13 +4,44 @@ import cv2
 from deepface import DeepFace
 import random
 
-'''random database generator
-- random specified number of persons'''
+'''
+Random database generator
+- random specified number of persons
 
-auth_size = 15
-not_auth_size = 15
+data/
+    database/
+            authorized_users/
+                            /1
+                                img1.jpg
+                                img2.jpg
+                            ...
+                            /100
+                                img1.jpg
+                                img2.jpg
+            incoming_users/
+                            authorized_users/
+                                            /1
+                                                img1.jpg
+                                                img2.jpg
+                                            ...
+                                            /50
+                                                img1.jpg
+                                                img2.jpg
+                            unauthorized_users/
+                                            /101
+                                                img1.jpg
+                                                img2.jpg
+                                            ...
+                                            /150
+                                                img1.jpg
+                                                img2.jpg
+'''
 
-num_person = 5
+random.seed(42)
+not_auth_size = 100  # liczba zdjęć nieautoryzowanych
+num_person = 150  # liczba wdrożonych profili
+incoming_auth_size = 500  # test na wdrożonych
+
 photos_counter = 0
 auth_ids = set()
 
@@ -19,11 +50,11 @@ incoming = '../data/database/incoming_users'
 incoming_auth = '../data/database/incoming_users/authorized_users'
 incoming_unauth = '../data/database/incoming_users/unauthorized_users'
 
-if any(os.path.exists(path) for path in [autho, incoming, incoming_auth, incoming_unauth]):
-    os.system(f'rm -r {autho}')
-    os.system(f'rm -r {incoming}')
-    os.system(f'rm -r {incoming_auth}')
-    os.system(f'rm -r {incoming_unauth}')
+# if any(os.path.exists(path) for path in [autho, incoming, incoming_auth, incoming_unauth]):
+#     os.system(f'rm -r {autho}')
+#     os.system(f'rm -r {incoming}')
+#     os.system(f'rm -r {incoming_auth}')
+#     os.system(f'rm -r {incoming_unauth}')
 
 os.makedirs(autho)
 os.makedirs(incoming)
@@ -35,45 +66,48 @@ print(rand_person)
 
 # Add unauthorized users
 for p in rand_person:
+    os.makedirs(f'{autho}/{p}')
     for img in glob.glob(f'../data/new_train/{p}/*.jpg'):
-        if len(auth_ids) < num_person or photos_counter < auth_size:
+        if len(auth_ids) < num_person:
             try:
                 emb = DeepFace.represent(img, model_name='Facenet')
                 auth_ids.add(p)
-                if img not in glob.glob(f'{autho}/*.jpg'):
-                    os.system(f'cp {img} {autho}')
+                if img not in glob.glob(f'{autho}/{p}/*.jpg'):
+                    os.system(f'cp {img} {autho}/{p}/')
                     photos_counter += 1
             except:
                 print(f'Error with {img}')
 
 print(photos_counter)
 print(auth_ids)
-unauth_ids = set(range(1, 10177)) - auth_ids
 
 # Add incoming users authorized
 tested = 0
 for i in auth_ids:
+    os.makedirs(f'{incoming_auth}/{i}')
     for img in glob.glob(f'../data/new_test/{i}/*.jpg'):
-        try:
-            dfs = DeepFace.find(img_path=img, db_path=autho, model_name='Facenet', silent=True)
-            if dfs[0].shape[0] != 0:
-                os.system(f'cp {img} {incoming_auth}')
-                tested += 1
-        except:
-            print(f'Error with {img}')
+        os.system(f'cp {img} {incoming_auth}/{i}/')
+        tested += 1
 
-print("Size of incoming authorized users: ", tested)
+    if tested >= incoming_auth_size:
+        break
+
+print("Size of incoming authorized users photos: ", tested)
+if tested < incoming_auth_size:
+    print("Not enough photos in incoming authorized users")
 
 # Add incoming users unauthorized
+unauth_ids = set(range(1, 10177)) - auth_ids
+unauth_ids = random.sample(list(unauth_ids), len(unauth_ids))
 incoming_unauth_counter = 0
 for i in unauth_ids:
+    os.makedirs(f'{incoming_unauth}/{i}')
     for img in glob.glob(f'../data/new_test/{i}/*.jpg'):
-        try:
-            dfs = DeepFace.find(img_path=img, db_path=autho, model_name='Facenet', silent=True)
-            if dfs[0].shape[0] == 0:
-                os.system(f'cp {img} {incoming_unauth}')
-                incoming_unauth_counter += 1
-        except:
-            print(f'Error with {img}')
+        os.system(f'cp {img} {incoming_unauth}/{i}/')
+        incoming_unauth_counter += 1
+
     if incoming_unauth_counter >= not_auth_size:
         break
+
+if incoming_unauth_counter < not_auth_size:
+    print("Not enough photos in incoming unauthorized users")
