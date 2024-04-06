@@ -38,10 +38,10 @@ data/
 
 
 class VerificationSystem:
-    def __init__(self, database_path: str, acceptance_threshold: float = 0.5):
+    def __init__(self, database_path: str, acceptance_threshold: float = 0.5, model_name: str = "Facenet"):
         self.database_path = database_path
         self.acceptance_threshold = acceptance_threshold
-
+        self.model_name = model_name
         self.initialize_database()
 
     def initialize_database(self) -> None:
@@ -50,6 +50,7 @@ class VerificationSystem:
             db_path=os.path.join(self.database_path, "authorized_users"),
             threshold=self.acceptance_threshold,
             enforce_detection=False,
+            model_name=self.model_name,
         )
 
     def verify_user(self, user_name: str, user_photo_path: str) -> bool:
@@ -59,6 +60,7 @@ class VerificationSystem:
             threshold=self.acceptance_threshold,
             enforce_detection=False,
             silent=True,
+            model_name=self.model_name,
         )
 
         # no face detected or above acceptance threshold
@@ -122,7 +124,7 @@ class VerificationSystem:
 
     def get_incoming_authorized_user_path(self) -> str:
         return os.path.join(
-            self.database_path, "incoming_users", "authorized_users", "1", "000023.jpg"
+            self.database_path, "incoming_users", "authorized_users", "1", "004753.jpg"
         )
 
     def get_incoming_unauthorized_user_path(self):
