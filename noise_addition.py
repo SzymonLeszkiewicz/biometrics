@@ -1,6 +1,8 @@
 import cv2
 import numpy as np
 from typing import Optional
+import os
+import glob
 
 
 class GaussianTransformer:
@@ -23,7 +25,7 @@ class GaussianTransformer:
     # with PSNR
 
     def transform(
-        self, input_image: np.ndarray, PSNR_dB=20, verbose=True
+            self, input_image: np.ndarray, PSNR_dB=20, verbose=True
     ) -> np.ndarray:
         """
 
@@ -33,7 +35,7 @@ class GaussianTransformer:
         :return: transformed image
         """
         sigma = np.sqrt(
-            (255**2) / (10 ** (PSNR_dB / 10))
+            (255 ** 2) / (10 ** (PSNR_dB / 10))
         )  # standard deviation based on PSNR_dB
         noise = np.random.normal(loc=0, scale=sigma, size=input_image.shape)
         noisy_image = np.clip(input_image + noise, 0, 255).astype(np.uint8)
@@ -53,22 +55,34 @@ class GaussianTransformer:
         return noisy_image
 
     def transform_directory(
-        self,
-        images_transformation_directory: str = None,
-        transformed_images_directory: str = None,
+            self,
+            images_transformation_directory: str = None,
+            transformed_images_directory: str = None,
     ):
         """
 
         :param images_transformation_directory: Directory from which images will be transformed
         :param transformed_images_directory: Directory to which transformed images will be stored/
         """
-        raise NotImplementedError
+        psnr_values = [70, 50, 30, 20, 10]
+        for psnr in psnr_values:
+            print(f"Transforming images with PSNR={psnr} dB")
+            for per in os.listdir(images_transformation_directory):
+                per_dir = os.path.join(images_transformation_directory, per)
+                trans_per_dir = os.path.join(transformed_images_directory+str(psnr), per)
+                os.makedirs(trans_per_dir, exist_ok=True)
+                for img in glob.glob(per_dir + "/*.jpg"):
+                    image = cv2.imread(img)
+                    noisy_image = self.transform(image, PSNR_dB=psnr, verbose=False)
+                    cv2.imwrite(
+                        trans_per_dir + "/" + os.path.basename(img), noisy_image
+                    )
 
 
 def luminance_transform(
-    input_image: np.ndarray,
-    scaling_type: str = "linear",
-    scale_factor: Optional[float] = 0.5,
+        input_image: np.ndarray,
+        scaling_type: str = "linear",
+        scale_factor: Optional[float] = 0.5,
 ) -> np.ndarray:
     """
     Function to perform luminance transformation
@@ -87,11 +101,11 @@ def luminance_transform(
         transformed_image = cv2.cvtColor(yuv_image, cv2.COLOR_YUV2BGR)
 
     elif scaling_type == "quadratic":
-        transformed_y_channel = y_channel**2
+        transformed_y_channel = y_channel ** 2
         min_value = np.min(transformed_y_channel)
         max_value = np.max(transformed_y_channel)
         scaled_y_channel = (
-            255 * (transformed_y_channel - min_value) / (max_value - min_value)
+                255 * (transformed_y_channel - min_value) / (max_value - min_value)
         ).astype(
             np.uint8
         )  # perform min max scaling with range 0, 255
