@@ -69,7 +69,7 @@ class GaussianTransformer:
             print(f"Transforming images with PSNR={psnr} dB")
             for per in os.listdir(images_transformation_directory):
                 per_dir = os.path.join(images_transformation_directory, per)
-                trans_per_dir = os.path.join(transformed_images_directory+str(psnr), per)
+                trans_per_dir = os.path.join(transformed_images_directory + str(psnr), per)
                 os.makedirs(trans_per_dir, exist_ok=True)
                 for img in glob.glob(per_dir + "/*.jpg"):
                     image = cv2.imread(img)
@@ -124,3 +124,33 @@ def luminance_transform(
         )
 
     return transformed_image
+
+
+def luminance_transform_directory(
+        images_transformation_directory: str = None,
+        transformed_images_directory: str = None,
+):
+    """
+    Function to perform luminance transformation on images from a directory
+    :param images_transformation_directory: Directory from which images will be transformed
+    :param transformed_images_directory: Directory to which transformed images will be stored/
+    """
+    lum_transformations = {
+        "quadratic": [None],
+        "linear": [0.5, 0.6, 0.75, 1.33, 1.5],
+        "constant": [-100, -20, -10, 30],
+    }
+    for lum_type, scale_factors in zip(lum_transformations.keys(), lum_transformations.values()):
+        for scale_factor in scale_factors:
+            print(f"Transforming images with {lum_type} transformation with scale factor {scale_factor}")
+            for per in os.listdir(images_transformation_directory):
+                per_dir = os.path.join(images_transformation_directory, per)
+                trans_per_dir = os.path.join(
+                    transformed_images_directory + '_' + str(lum_type) + '_' + str(scale_factor), per)
+                os.makedirs(trans_per_dir, exist_ok=True)
+                for img in glob.glob(per_dir + "/*.jpg"):
+                    image = cv2.imread(img)
+                    transformed_image = luminance_transform(image, scaling_type=lum_type, scale_factor=scale_factor)
+                    cv2.imwrite(
+                        trans_per_dir + "/" + os.path.basename(img), transformed_image
+                    )
