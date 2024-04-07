@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
 from typing import Optional
+import os
+import glob
+from typing import Dict
 
 
 class GaussianTransformer:
@@ -23,7 +26,7 @@ class GaussianTransformer:
     # with PSNR
 
     def transform(
-        self, input_image: np.ndarray, PSNR_dB=20, verbose=True
+            self, input_image: np.ndarray, PSNR_dB=20, verbose=True
     ) -> np.ndarray:
         """
 
@@ -33,7 +36,7 @@ class GaussianTransformer:
         :return: transformed image
         """
         sigma = np.sqrt(
-            (255**2) / (10 ** (PSNR_dB / 10))
+            (255 ** 2) / (10 ** (PSNR_dB / 10))
         )  # standard deviation based on PSNR_dB
         noise = np.random.normal(loc=0, scale=sigma, size=input_image.shape)
         noisy_image = np.clip(input_image + noise, 0, 255).astype(np.uint8)
@@ -53,22 +56,42 @@ class GaussianTransformer:
         return noisy_image
 
     def transform_directory(
-        self,
-        images_transformation_directory: str = None,
-        transformed_images_directory: str = None,
+            self,
+            images_transformation_directory: str = None,
+            transformed_images_directory: str = None,
+            fine_tune: bool = False,
+            parametrized: list = [70, 50, 30, 20, 10],
     ):
         """
 
         :param images_transformation_directory: Directory from which images will be transformed
         :param transformed_images_directory: Directory to which transformed images will be stored/
         """
-        raise NotImplementedError
+        psnr_values = parametrized
+        for psnr in psnr_values:
+            print(f"Transforming images with PSNR={psnr} dB")
+            for per in os.listdir(images_transformation_directory):
+                if per.endswith('.pkl'):
+                    continue
+                per_dir = os.path.join(images_transformation_directory, per)
+                trans_per_dir = os.path.join(transformed_images_directory + '_psnr' + str(psnr), per)
+                os.makedirs(trans_per_dir, exist_ok=True)
+                for img in glob.glob(per_dir + "/*.jpg"):
+                    image = cv2.imread(img)
+                    if fine_tune:
+                        cv2.imwrite(
+                            trans_per_dir + "/" + os.path.basename(img), image)
+
+                    noisy_image = self.transform(image, PSNR_dB=psnr, verbose=False)
+                    cv2.imwrite(
+                        trans_per_dir + "/t" + os.path.basename(img), noisy_image
+                    )
 
 
 def luminance_transform(
-    input_image: np.ndarray,
-    scaling_type: str = "linear",
-    scale_factor: Optional[float] = 0.5,
+        input_image: np.ndarray,
+        scaling_type: str = "linear",
+        scale_factor: Optional[float] = 0.5,
 ) -> np.ndarray:
     """
     Function to perform luminance transformation
@@ -87,11 +110,11 @@ def luminance_transform(
         transformed_image = cv2.cvtColor(yuv_image, cv2.COLOR_YUV2BGR)
 
     elif scaling_type == "quadratic":
-        transformed_y_channel = y_channel**2
+        transformed_y_channel = y_channel ** 2
         min_value = np.min(transformed_y_channel)
         max_value = np.max(transformed_y_channel)
         scaled_y_channel = (
-            255 * (transformed_y_channel - min_value) / (max_value - min_value)
+                255 * (transformed_y_channel - min_value) / (max_value - min_value)
         ).astype(
             np.uint8
         )  # perform min max scaling with range 0, 255
@@ -110,3 +133,40 @@ def luminance_transform(
         )
 
     return transformed_image
+
+
+def luminance_transform_directory(
+        images_transformation_directory: str = None,
+        transformed_images_directory: str = None,
+        finetune: bool = False,
+        parametrized: Dict[str, list] = {
+            "quadratic": [None],
+            "linear": [0.5, 0.6, 0.75, 1.33, 1.5],
+            "constant": [-100, -20, -10, 30],
+        }
+):
+    """
+    Function to perform luminance transformation on images from a directory
+    :param images_transformation_directory: Directory from which images will be transformed
+    :param transformed_images_directory: Directory to which transformed images will be stored/
+    """
+    lum_transformations = parametrized
+    for lum_type, scale_factors in zip(lum_transformations.keys(), lum_transformations.values()):
+        for scale_factor in scale_factors:
+            print(f"Transforming images with {lum_type} transformation with scale factor {scale_factor}")
+            for per in os.listdir(images_transformation_directory):
+                if per.endswith('.pkl'):
+                    continue
+                per_dir = os.path.join(images_transformation_directory, per)
+                trans_per_dir = os.path.join(
+                    transformed_images_directory + '_' + str(lum_type) + '_' + str(scale_factor), per)
+                os.makedirs(trans_per_dir, exist_ok=True)
+                for img in glob.glob(per_dir + "/*.jpg"):
+                    image = cv2.imread(img)
+                    if finetune:
+                        cv2.imwrite(
+                            trans_per_dir + "/" + os.path.basename(img), image)
+                    transformed_image = luminance_transform(image, scaling_type=lum_type, scale_factor=scale_factor)
+                    cv2.imwrite(
+                        trans_per_dir + "/l" + os.path.basename(img), transformed_image
+                    )

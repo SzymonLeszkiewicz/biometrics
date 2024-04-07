@@ -40,27 +40,37 @@ data/
 
 
 class VerificationSystem:
-    def __init__(self, database_path: str, acceptance_threshold: float = 0.5):
+    def __init__(self, database_path: str, acceptance_threshold: float = 0.5, model_name: str = "Facenet"):
         self.database_path = database_path
         self.acceptance_threshold = acceptance_threshold
+        self.model_name = model_name
+        self.initialize_mutiple_databases()
 
-        self.initialize_database()
-
-    def initialize_database(self) -> None:
+    def initialize_database(self, destination) -> None:
         DeepFace.find(
             img_path=self.get_incoming_authorized_user_path(),
-            db_path=os.path.join(self.database_path, "authorized_users"),
+            db_path=os.path.join(self.database_path, destination),
             threshold=self.acceptance_threshold,
             enforce_detection=False,
+            model_name=self.model_name,
         )
 
-    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray) -> bool:
+    def initialize_mutiple_databases(self) -> None:
+        databases = os.listdir(os.path.join(self.database_path))
+        for db in databases:
+            if db in [".DS_Store", "incoming_users"]:
+                continue
+            print(db)
+            self.initialize_database(db)
+
+    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray, destination: str = "authorized_users") -> bool:
         faces_found = DeepFace.find(
             img_path=user_photo_path,
-            db_path=os.path.join(self.database_path, "authorized_users"),
+            db_path=os.path.join(self.database_path, destination),
             threshold=self.acceptance_threshold,
             enforce_detection=False,
             silent=True,
+            model_name=self.model_name,
         )
 
         # no face detected or above acceptance threshold
@@ -79,7 +89,7 @@ class VerificationSystem:
 
         return is_access_granted
 
-    def verify_multiple_users(self, incoming_users_path: str) -> pd.DataFrame:
+    def verify_multiple_users(self, incoming_users_path: str, destination: str = "authorized_users") -> pd.DataFrame:
         df_users = pd.DataFrame(
             columns=[
                 "image_path",
@@ -87,19 +97,14 @@ class VerificationSystem:
             ]
         )
 
-        for user_name in tqdm(
-            iterable=os.listdir(incoming_users_path), desc="Processing users"
-        ):
-            for user_photo in tqdm(
-                iterable=os.listdir(os.path.join(incoming_users_path, user_name)),
-                desc="Processing user photos",
-                leave=False,
-            ):
+        for user_name in os.listdir(incoming_users_path):
+            for user_photo in os.listdir(os.path.join(incoming_users_path, user_name)):
                 is_access_granted = self.verify_user(
                     user_name=user_name,
                     user_photo_path=os.path.join(
                         incoming_users_path, user_name, user_photo
                     ),
+                    destination=destination,
                 )
 
                 df_user = pd.DataFrame(
@@ -118,7 +123,7 @@ class VerificationSystem:
 
     @staticmethod
     def calculate_access_granted_rate(
-        df_users: pd.DataFrame,
+            df_users: pd.DataFrame,
     ) -> float:
         return df_users["is_access_granted"].sum() / len(df_users)
 
@@ -152,7 +157,7 @@ class VerificationSystem:
 
     def get_incoming_authorized_user_path(self) -> str:
         return os.path.join(
-            self.database_path, "incoming_users", "authorized_users", "1", "000023.jpg"
+            self.database_path, "incoming_users", "authorized_users", "25", "010802.jpg"
         )
 
     def get_incoming_unauthorized_user_path(self):
@@ -164,7 +169,7 @@ class VerificationSystem:
             "020633.jpg",
         )
 
-    def get_problematic_incoming_authorized_user_path(self):
-        return os.path.join(
-            self.database_path, "incoming_users", "authorized_users", "22", "001677.jpg"
-        )
+        def get_problematic_incoming_authorized_user_path(self):
+            return os.path.join(
+                self.database_path, "incoming_users", "authorized_users", "22", "001677.jpg"
+            )
