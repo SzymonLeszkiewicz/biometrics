@@ -9,7 +9,7 @@ from verification_system import VerificationSystem
 st.set_page_config(page_title="Verify User", page_icon="👁️")
 
 
-def verify_user(user_name: str, user_image: bytes):
+def verify_user(user_name: str, user_image: bytes) -> bool:
     column_left, column_right = st.columns(2)
 
     with column_left:
@@ -28,9 +28,38 @@ def verify_user(user_name: str, user_image: bytes):
                 st.success("Verified")
             else:
                 st.error("Not Verified")
+        return is_verified
     except Exception as e:
         with column_right:
             st.exception(e)
+
+
+def show_user_images(user_name: str):
+    user_directory_path = os.path.join(
+        "data", "database", "authorized_users", user_name
+    )
+    user_images_path = os.listdir(user_directory_path)
+
+    st.write("# User Images")
+
+    number_of_columns = 4
+    number_of_images = len(user_images_path)
+    number_of_rows = (number_of_images + number_of_columns - 1) // number_of_columns
+
+    for row_index in range(number_of_rows):
+        columns = st.columns(number_of_columns)
+        for column_index in range(number_of_columns):
+            index = row_index * number_of_columns + column_index
+            if index < number_of_images:
+                user_image_path = os.path.join(
+                    user_directory_path, user_images_path[index]
+                )
+                columns[column_index].image(
+                    image=user_image_path,
+                    use_column_width="auto",
+                )
+            else:
+                break
 
 
 st.title("Verify User")
@@ -49,4 +78,7 @@ if uploaded_name:
     )
 
     if uploaded_image is not None:
-        verify_user(user_name=uploaded_name, user_image=uploaded_image)
+        is_verified = verify_user(user_name=uploaded_name, user_image=uploaded_image)
+
+        if is_verified:
+            show_user_images(user_name=uploaded_name)
