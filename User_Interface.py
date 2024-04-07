@@ -16,6 +16,7 @@ st.markdown(
     
     ### Available methods
     - Verify User
+    - Facial Analysis
     """
 )
 
