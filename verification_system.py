@@ -1,8 +1,10 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from deepface import DeepFace
+from sklearn.metrics import confusion_matrix
 from tqdm.autonotebook import tqdm
 
 """
@@ -61,7 +63,7 @@ class VerificationSystem:
             print(db)
             self.initialize_database(db)
 
-    def verify_user(self, user_name: str, user_photo_path: str, destination: str = "authorized_users") -> bool:
+    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray, destination: str = "authorized_users") -> bool:
         faces_found = DeepFace.find(
             img_path=user_photo_path,
             db_path=os.path.join(self.database_path, destination),
@@ -127,7 +129,7 @@ class VerificationSystem:
 
     @staticmethod
     def calculate_far_frr(
-            df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
+        df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
     ):
         """
         Function to calculate False Acceptance Rate, False Rejection Rate
