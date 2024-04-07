@@ -125,6 +125,34 @@ class VerificationSystem:
     ) -> float:
         return df_users["is_access_granted"].sum() / len(df_users)
 
+    @staticmethod
+    def calculate_far_frr(
+            df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
+    ):
+        """
+        Function to calculate False Acceptance Rate, False Rejection Rate
+
+        :param df_users_authorized: DF with users in database
+        :param df_users_unauthorized: DF with users that are not authorized in database
+        :return: False Acceptance Rate, False Rejection Rate
+        """
+        df_concatenated = pd.concat(
+            [df_users_authorized, df_users_unauthorized], axis=0
+        )
+        true_labels = [True] * len(df_users_authorized) + [False] * len(
+            df_users_unauthorized
+        )
+        predicted_labels = df_concatenated["is_access_granted"].to_list()
+        tn, fp, fn, tp = confusion_matrix(
+            y_true=true_labels, y_pred=predicted_labels
+        ).ravel()
+
+        tpr = tp / (tp + fn)
+        fpr = fp / (fp + tn)
+        far = 1 - tpr
+        frr = fpr
+        return far, frr
+
     def get_incoming_authorized_user_path(self) -> str:
         return os.path.join(
             self.database_path, "incoming_users", "authorized_users", "25", "010802.jpg"
@@ -132,12 +160,11 @@ class VerificationSystem:
 
     def get_incoming_unauthorized_user_path(self):
         return os.path.join(
-            self.data,
-            base_path,
+            self.database_path,
             "incoming_users",
             "unauthorized_users",
-            "69",
-            "032251.jpg",
+            "101",
+            "020633.jpg",
         )
 
         def get_problematic_incoming_authorized_user_path(self):
