@@ -4,8 +4,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from deepface import DeepFace
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_curve
 from tqdm.autonotebook import tqdm
+import matplotlib.pyplot as plt
+from typing import Tuple
 
 """
 Current database format
@@ -54,7 +56,10 @@ class VerificationSystem:
             enforce_detection=False,
         )
 
-    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray) -> bool:
+    def verify_user(
+        self, user_name: str, user_photo_path: str | np.ndarray
+    ) -> Tuple[bool, float]:
+        # TODO: change it in UI, now function return Tuple!
         faces_found = DeepFace.find(
             img_path=user_photo_path,
             db_path=os.path.join(self.database_path, "authorized_users"),
@@ -65,7 +70,7 @@ class VerificationSystem:
 
         # no face detected or above acceptance threshold
         if faces_found[0].empty:
-            return False
+            return False, np.inf
 
         # TODO: find a way to make it path independent
         # assumption that only one face is in the image
@@ -77,15 +82,10 @@ class VerificationSystem:
 
         is_access_granted = user_name == predicted_user_name
 
-        return is_access_granted
+        return is_access_granted, faces_found[0]["distance"]
 
     def verify_multiple_users(self, incoming_users_path: str) -> pd.DataFrame:
-        df_users = pd.DataFrame(
-            columns=[
-                "image_path",
-                "is_access_granted",
-            ]
-        )
+        df_users = pd.DataFrame(columns=["image_path", "is_access_granted", "distance"])
 
         for user_name in tqdm(
             iterable=os.listdir(incoming_users_path), desc="Processing users"
@@ -95,7 +95,7 @@ class VerificationSystem:
                 desc="Processing user photos",
                 leave=False,
             ):
-                is_access_granted = self.verify_user(
+                is_access_granted, distance = self.verify_user(
                     user_name=user_name,
                     user_photo_path=os.path.join(
                         incoming_users_path, user_name, user_photo
@@ -108,6 +108,7 @@ class VerificationSystem:
                             incoming_users_path, user_name, user_photo
                         ),
                         "is_access_granted": is_access_granted,
+                        "distance": distance,
                     },
                     index=[0],
                 )
@@ -123,9 +124,45 @@ class VerificationSystem:
         return df_users["is_access_granted"].sum() / len(df_users)
 
     @staticmethod
+    def draw_ROC_curve(
+        df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
+    ) -> Tuple[int, int, int, int]:
+        """
+        Function to draw ROC curve based on DFs with authorized and unauthorized users, based on changing threshold
+        of distance.
+        :param df_users_authorized: DF with users in database
+        :param df_users_unauthorized: DF with users that are not authorized in database
+        :return: Tuple of TN, FP, FN, TP
+        """
+        df_concatenated = pd.concat(
+            [df_users_authorized, df_users_unauthorized], axis=0
+        )
+        true_labels = [True] * len(df_users_authorized) + [False] * len(
+            df_users_unauthorized
+        )
+        predicted_labels = df_concatenated["is_access_granted"].to_list()
+        distances = df_concatenated["distance"]
+        distances = np.where(
+            np.isinf(distances), verification_system.acceptance_threshold, distances
+        )  # change np.inf value to distance == acceptance threshold
+
+        fpr, tpr, thresholds = roc_curve(true_labels, distances)
+        plt.figure()
+        plt.plot(fpr, tpr)
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("ROC Curve")
+        plt.show()
+
+        tn, fp, fn, tp = confusion_matrix(
+            y_true=true_labels, y_pred=predicted_labels
+        ).ravel()
+        return tn, fp, fn, tp
+
+    @staticmethod
     def calculate_far_frr(
         df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
-    ):
+    ) -> Tuple[float, float]:
         """
         Function to calculate False Acceptance Rate, False Rejection Rate
 

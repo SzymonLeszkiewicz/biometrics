@@ -19,7 +19,7 @@ def verify_user(user_name: str, user_image: bytes) -> bool:
         image = Image.open(user_image)
         image_array = np.array(image)
 
-        is_verified = face_verification_system.verify_user(
+        is_verified, _ = face_verification_system.verify_user(
             user_name=user_name, user_photo_path=image_array
         )
 
