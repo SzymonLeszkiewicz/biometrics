@@ -69,7 +69,7 @@ class GaussianTransformer:
             print(f"Transforming images with PSNR={psnr} dB")
             for per in os.listdir(images_transformation_directory):
                 per_dir = os.path.join(images_transformation_directory, per)
-                trans_per_dir = os.path.join(transformed_images_directory + str(psnr), per)
+                trans_per_dir = os.path.join(transformed_images_directory + '_psnr' + str(psnr), per)
                 os.makedirs(trans_per_dir, exist_ok=True)
                 for img in glob.glob(per_dir + "/*.jpg"):
                     image = cv2.imread(img)
