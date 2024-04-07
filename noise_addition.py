@@ -3,6 +3,7 @@ import numpy as np
 from typing import Optional
 import os
 import glob
+from typing import Dict
 
 
 class GaussianTransformer:
@@ -58,24 +59,32 @@ class GaussianTransformer:
             self,
             images_transformation_directory: str = None,
             transformed_images_directory: str = None,
+            fine_tune: bool = False,
+            parametrized: list = [70, 50, 30, 20, 10],
     ):
         """
 
         :param images_transformation_directory: Directory from which images will be transformed
         :param transformed_images_directory: Directory to which transformed images will be stored/
         """
-        psnr_values = [70, 50, 30, 20, 10]
+        psnr_values = parametrized
         for psnr in psnr_values:
             print(f"Transforming images with PSNR={psnr} dB")
             for per in os.listdir(images_transformation_directory):
+                if per.endswith('.pkl'):
+                    continue
                 per_dir = os.path.join(images_transformation_directory, per)
                 trans_per_dir = os.path.join(transformed_images_directory + '_psnr' + str(psnr), per)
                 os.makedirs(trans_per_dir, exist_ok=True)
                 for img in glob.glob(per_dir + "/*.jpg"):
                     image = cv2.imread(img)
+                    if fine_tune:
+                        cv2.imwrite(
+                            trans_per_dir + "/" + os.path.basename(img), image)
+
                     noisy_image = self.transform(image, PSNR_dB=psnr, verbose=False)
                     cv2.imwrite(
-                        trans_per_dir + "/" + os.path.basename(img), noisy_image
+                        trans_per_dir + "/t" + os.path.basename(img), noisy_image
                     )
 
 
@@ -129,28 +138,35 @@ def luminance_transform(
 def luminance_transform_directory(
         images_transformation_directory: str = None,
         transformed_images_directory: str = None,
+        finetune: bool = False,
+        parametrized: Dict[str, list] = {
+            "quadratic": [None],
+            "linear": [0.5, 0.6, 0.75, 1.33, 1.5],
+            "constant": [-100, -20, -10, 30],
+        }
 ):
     """
     Function to perform luminance transformation on images from a directory
     :param images_transformation_directory: Directory from which images will be transformed
     :param transformed_images_directory: Directory to which transformed images will be stored/
     """
-    lum_transformations = {
-        "quadratic": [None],
-        "linear": [0.5, 0.6, 0.75, 1.33, 1.5],
-        "constant": [-100, -20, -10, 30],
-    }
+    lum_transformations = parametrized
     for lum_type, scale_factors in zip(lum_transformations.keys(), lum_transformations.values()):
         for scale_factor in scale_factors:
             print(f"Transforming images with {lum_type} transformation with scale factor {scale_factor}")
             for per in os.listdir(images_transformation_directory):
+                if per.endswith('.pkl'):
+                    continue
                 per_dir = os.path.join(images_transformation_directory, per)
                 trans_per_dir = os.path.join(
                     transformed_images_directory + '_' + str(lum_type) + '_' + str(scale_factor), per)
                 os.makedirs(trans_per_dir, exist_ok=True)
                 for img in glob.glob(per_dir + "/*.jpg"):
                     image = cv2.imread(img)
+                    if finetune:
+                        cv2.imwrite(
+                            trans_per_dir + "/" + os.path.basename(img), image)
                     transformed_image = luminance_transform(image, scaling_type=lum_type, scale_factor=scale_factor)
                     cv2.imwrite(
-                        trans_per_dir + "/" + os.path.basename(img), transformed_image
+                        trans_per_dir + "/l" + os.path.basename(img), transformed_image
                     )
