@@ -1,9 +1,9 @@
 import os.path
 
-import streamlit as st
 import numpy as np
-from verification_system import VerificationSystem
+import streamlit as st
 
+from verification_system import VerificationSystem
 
 st.set_page_config(page_title="Verify Multiple User", page_icon="👁️")
 
@@ -18,21 +18,62 @@ def verify_multiple_users(incoming_users_path: str):
         st.exception(e)
 
 
-st.title("Verify Multiple Users")
-
 face_verification_system = VerificationSystem(
     database_path=os.path.join("data", "database")
 )
 
-uploaded_folder_path = st.text_input(
-    "Enter path to the folder containing users profiles:"
-)
+st.title("Verify Multiple Users")
 
-if os.path.isdir(uploaded_folder_path):
-    df_multiple_users = verify_multiple_users(uploaded_folder_path)
-    access_granted_rate = face_verification_system.calculate_access_granted_rate(
-        df_multiple_users
+use_mode = st.toggle(label="Use Authorized/Unauthorized Users Mode")
+
+if not use_mode:
+    uploaded_folder_path = st.text_input(
+        "Enter path to the folder containing users profiles:"
     )
 
-    st.write("Access Granted Rate:", np.round(access_granted_rate, 3))
-    st.dataframe(df_multiple_users)
+    if os.path.isdir(uploaded_folder_path):
+        df_multiple_users = verify_multiple_users(uploaded_folder_path)
+        access_granted_rate = face_verification_system.calculate_access_granted_rate(
+            df_multiple_users
+        )
+
+        st.write("Access Granted Rate:", np.round(access_granted_rate, 3))
+        st.dataframe(df_multiple_users)
+
+else:
+    uploaded_authorized_users_folder_path = st.text_input(
+        "Enter path to the folder containing authorized users profiles:"
+    )
+    uploaded_unauthorized_users_folder_path = st.text_input(
+        "Enter path to the folder containing unauthorized users profiles:"
+    )
+
+    if os.path.isdir(uploaded_authorized_users_folder_path) and os.path.isdir(
+        uploaded_unauthorized_users_folder_path
+    ):
+        df_authorized_users = verify_multiple_users(
+            uploaded_authorized_users_folder_path
+        )
+        df_unauthorized_users = verify_multiple_users(
+            uploaded_unauthorized_users_folder_path
+        )
+        false_acceptance_rate, false_rejection_rate = (
+            face_verification_system.calculate_far_frr(
+                df_authorized_users, df_unauthorized_users
+            )
+        )
+
+        st.write("## Results")
+        column_left, column_right = st.columns(2)
+
+        with column_left:
+            st.write("False Acceptance Rate: ", np.round(false_acceptance_rate, 3))
+
+        with column_right:
+            st.write("False Rejection Rate: ", np.round(false_rejection_rate, 3))
+
+        st.write("### Authorized Users")
+        st.dataframe(df_authorized_users)
+
+        st.write("### Unauthorized Users")
+        st.dataframe(df_unauthorized_users)
