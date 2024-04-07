@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from deepface import DeepFace
 from tqdm.autonotebook import tqdm
@@ -52,7 +53,7 @@ class VerificationSystem:
             enforce_detection=False,
         )
 
-    def verify_user(self, user_name: str, user_photo_path: str) -> bool:
+    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray) -> bool:
         faces_found = DeepFace.find(
             img_path=user_photo_path,
             db_path=os.path.join(self.database_path, "authorized_users"),
