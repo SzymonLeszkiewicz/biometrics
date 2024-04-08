@@ -4,7 +4,7 @@ from typing import Optional
 import os
 import glob
 from typing import Dict
-
+import shutil
 
 class GaussianTransformer:
     """
@@ -72,6 +72,9 @@ class GaussianTransformer:
             print(f"Transforming images with PSNR={psnr} dB")
             for per in os.listdir(images_transformation_directory):
                 if per.endswith('.pkl'):
+                    print(f"copying .pkl {os.path.join(images_transformation_directory, per)}, {os.path.join(transformed_images_directory, per)}")
+                    print(os.getcwd())
+                    shutil.copyfile(os.path.join(images_transformation_directory, per), os.path.join(transformed_images_directory+ '_psnr' + str(psnr), per))
                     continue
                 per_dir = os.path.join(images_transformation_directory, per)
                 trans_per_dir = os.path.join(transformed_images_directory + '_psnr' + str(psnr), per)
@@ -156,6 +159,9 @@ def luminance_transform_directory(
             print(f"Transforming images with {lum_type} transformation with scale factor {scale_factor}")
             for per in os.listdir(images_transformation_directory):
                 if per.endswith('.pkl'):
+                    print(f"copying .pkl {os.path.join(images_transformation_directory, per)}, {os.path.join(transformed_images_directory, per)}")
+                    print(os.getcwd())
+                    shutil.copyfile(os.path.join(images_transformation_directory, per), os.path.join(transformed_images_directory+ '_' + str(lum_type) + '_' + str(scale_factor), per))
                     continue
                 per_dir = os.path.join(images_transformation_directory, per)
                 trans_per_dir = os.path.join(
@@ -170,3 +176,4 @@ def luminance_transform_directory(
                     cv2.imwrite(
                         trans_per_dir + "/l" + os.path.basename(img), transformed_image
                     )
+
