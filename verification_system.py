@@ -123,9 +123,8 @@ class VerificationSystem:
     ) -> float:
         return df_users["is_access_granted"].sum() / len(df_users)
 
-    @staticmethod
     def draw_ROC_curve(
-        df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
+        self, df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
     ) -> Tuple[int, int, int, int]:
         """
         Function to draw ROC curve based on DFs with authorized and unauthorized users, based on changing threshold
@@ -142,11 +141,31 @@ class VerificationSystem:
         )
         predicted_labels = df_concatenated["is_access_granted"].to_list()
         distances = df_concatenated["distance"]
-        distances = np.where(
-            np.isinf(distances), verification_system.acceptance_threshold, distances
-        )  # change np.inf value to distance == acceptance threshold
 
-        fpr, tpr, thresholds = roc_curve(true_labels, distances)
+        non_inf_values = distances.replace([np.inf, -np.inf], np.nan).dropna().unique()
+        non_inf_values_sorted = np.sort(non_inf_values)[::-1]
+        second_max_value = (
+            non_inf_values_sorted[1]
+            if len(non_inf_values_sorted) > 1
+            and len(non_inf_values) != len(distances.unique())
+            else non_inf_values_sorted[0]
+        )  # get valid distances from system
+        distances.replace(
+            [np.inf], second_max_value, inplace=True
+        )  # replace inf distance with max available distance, which is not np.inf -> system errored finding match
+        probabilities = (
+            second_max_value - distances
+        )  # analyze distances as probabilities of accepting by system
+
+        acceptance_threshold_scaled = (
+            self.acceptance_threshold - probabilities.min()
+        ) / (probabilities.max() - probabilities.min())
+        scale_factor = (
+            0.5 / acceptance_threshold_scaled
+        )  # make sure that threshold in in the middle of probabilities
+        probabilities_rescaled = (probabilities - probabilities.min()) * scale_factor
+
+        fpr, tpr, thresholds = roc_curve(true_labels, probabilities_rescaled)
         plt.figure()
         plt.plot(fpr, tpr)
         plt.xlabel("False Positive Rate")
