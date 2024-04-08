@@ -42,33 +42,34 @@ data/
 
 
 class VerificationSystem:
-    def __init__(self, database_path: str, acceptance_threshold: float = 0.5, model_name: str = "Facenet"):
+    def __init__(
+        self,
+        database_path: str,
+        acceptance_threshold: float = 0.5,
+        model_name: str = "ArcFace",
+        destination: str = "authorized_users",
+    ):
         self.database_path = database_path
         self.acceptance_threshold = acceptance_threshold
         self.model_name = model_name
-        self.initialize_mutiple_databases()
+        self.destination = destination
+        self.initialize_database()
 
-    def initialize_database(self, destination) -> None:
+    def initialize_database(self) -> None:
         DeepFace.find(
             img_path=self.get_incoming_authorized_user_path(),
-            db_path=os.path.join(self.database_path, destination),
+            db_path=os.path.join(self.database_path, self.destination),
             threshold=self.acceptance_threshold,
             enforce_detection=False,
             model_name=self.model_name,
         )
 
-    def initialize_mutiple_databases(self) -> None:
-        databases = os.listdir(os.path.join(self.database_path))
-        for db in databases:
-            if db in [".DS_Store", "incoming_users"]:
-                continue
-            print(db)
-            self.initialize_database(db)
-
-    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray, destination: str = "authorized_users") -> Tuple[bool, float]:
+    def verify_user(
+        self, user_name: str, user_photo_path: str | np.ndarray
+    ) -> Tuple[bool, float]:
         faces_found = DeepFace.find(
             img_path=user_photo_path,
-            db_path=os.path.join(self.database_path, destination),
+            db_path=os.path.join(self.database_path, self.destination),
             threshold=self.acceptance_threshold,
             enforce_detection=False,
             silent=True,
@@ -91,7 +92,7 @@ class VerificationSystem:
 
         return is_access_granted, faces_found[0]["distance"]
 
-    def verify_multiple_users(self, incoming_users_path: str, destination: str = "authorized_users") -> pd.DataFrame:
+    def verify_multiple_users(self, incoming_users_path: str) -> pd.DataFrame:
         df_users = pd.DataFrame(
             columns=[
                 "image_path",
@@ -100,14 +101,19 @@ class VerificationSystem:
             ]
         )
 
-        for user_name in os.listdir(incoming_users_path):
-            for user_photo in os.listdir(os.path.join(incoming_users_path, user_name)):
+        for user_name in tqdm(
+            iterable=os.listdir(incoming_users_path), desc="Processing Users"
+        ):
+            for user_photo in tqdm(
+                iterable=os.listdir(os.path.join(incoming_users_path, user_name)),
+                desc="Processing Images",
+                leave=False,
+            ):
                 is_access_granted, distance = self.verify_user(
                     user_name=user_name,
                     user_photo_path=os.path.join(
                         incoming_users_path, user_name, user_photo
                     ),
-                    destination=destination,
                 )
 
                 df_user = pd.DataFrame(
@@ -127,18 +133,22 @@ class VerificationSystem:
 
     @staticmethod
     def calculate_access_granted_rate(
-            df_users: pd.DataFrame,
+        df_users: pd.DataFrame,
     ) -> float:
         return df_users["is_access_granted"].sum() / len(df_users)
 
-    def draw_ROC_curve(
-        self, df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
+    def calculate_ROC_curve(
+        self,
+        df_users_authorized: pd.DataFrame,
+        df_users_unauthorized: pd.DataFrame,
+        roc_curve_path: str = None,
     ) -> Tuple[int, int, int, int]:
         """
         Function to draw ROC curve based on DFs with authorized and unauthorized users, based on changing threshold
         of distance.
         :param df_users_authorized: DF with users in database
         :param df_users_unauthorized: DF with users that are not authorized in database
+        :param roc_curve_path: path to save ROC curve plot
         :return: Tuple of TN, FP, FN, TP
         """
         df_concatenated = pd.concat(
@@ -173,13 +183,20 @@ class VerificationSystem:
         )  # make sure that threshold in in the middle of probabilities
         probabilities_rescaled = (probabilities - probabilities.min()) * scale_factor
 
-        fpr, tpr, thresholds = roc_curve(true_labels, probabilities_rescaled)
-        plt.figure()
-        plt.plot(fpr, tpr)
-        plt.xlabel("False Positive Rate")
-        plt.ylabel("True Positive Rate")
-        plt.title("ROC Curve")
-        plt.show()
+        if roc_curve_path is not None:
+            roc_curve_directory = os.path.dirname(roc_curve_path)
+            if not os.path.exists(roc_curve_directory):
+                os.makedirs(roc_curve_directory, exist_ok=True)
+
+            fpr, tpr, thresholds = roc_curve(true_labels, probabilities_rescaled)
+            plt.figure(figsize=(16, 9), dpi=200)
+            plt.plot(fpr, tpr)
+            plt.xlabel("False Positive Rate")
+            plt.ylabel("True Positive Rate")
+            plt.title("ROC Curve")
+            plt.tight_layout()
+            plt.savefig(roc_curve_path, dpi=200)
+            plt.close()
 
         tn, fp, fn, tp = confusion_matrix(
             y_true=true_labels, y_pred=predicted_labels
@@ -216,7 +233,7 @@ class VerificationSystem:
 
     def get_incoming_authorized_user_path(self) -> str:
         return os.path.join(
-            self.database_path, "incoming_users", "authorized_users", "25", "010802.jpg"
+            self.database_path, "incoming_users", "authorized_users", "1", "000023.jpg"
         )
 
     def get_incoming_unauthorized_user_path(self):
