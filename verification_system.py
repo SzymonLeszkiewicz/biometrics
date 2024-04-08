@@ -4,8 +4,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from deepface import DeepFace
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_curve
 from tqdm.autonotebook import tqdm
+import matplotlib.pyplot as plt
+from typing import Tuple
 
 """
 Current database format
@@ -63,7 +65,7 @@ class VerificationSystem:
             print(db)
             self.initialize_database(db)
 
-    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray, destination: str = "authorized_users") -> bool:
+    def verify_user(self, user_name: str, user_photo_path: str | np.ndarray, destination: str = "authorized_users") -> Tuple[bool, float]:
         faces_found = DeepFace.find(
             img_path=user_photo_path,
             db_path=os.path.join(self.database_path, destination),
@@ -75,7 +77,7 @@ class VerificationSystem:
 
         # no face detected or above acceptance threshold
         if faces_found[0].empty:
-            return False
+            return False, np.inf
 
         # TODO: find a way to make it path independent
         # assumption that only one face is in the image
@@ -87,19 +89,20 @@ class VerificationSystem:
 
         is_access_granted = user_name == predicted_user_name
 
-        return is_access_granted
+        return is_access_granted, faces_found[0]["distance"]
 
     def verify_multiple_users(self, incoming_users_path: str, destination: str = "authorized_users") -> pd.DataFrame:
         df_users = pd.DataFrame(
             columns=[
                 "image_path",
                 "is_access_granted",
+                "distance",
             ]
         )
 
         for user_name in os.listdir(incoming_users_path):
             for user_photo in os.listdir(os.path.join(incoming_users_path, user_name)):
-                is_access_granted = self.verify_user(
+                is_access_granted, distance = self.verify_user(
                     user_name=user_name,
                     user_photo_path=os.path.join(
                         incoming_users_path, user_name, user_photo
@@ -113,6 +116,7 @@ class VerificationSystem:
                             incoming_users_path, user_name, user_photo
                         ),
                         "is_access_granted": is_access_granted,
+                        "distance": distance,
                     },
                     index=[0],
                 )
@@ -127,10 +131,65 @@ class VerificationSystem:
     ) -> float:
         return df_users["is_access_granted"].sum() / len(df_users)
 
+    def draw_ROC_curve(
+        self, df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
+    ) -> Tuple[int, int, int, int]:
+        """
+        Function to draw ROC curve based on DFs with authorized and unauthorized users, based on changing threshold
+        of distance.
+        :param df_users_authorized: DF with users in database
+        :param df_users_unauthorized: DF with users that are not authorized in database
+        :return: Tuple of TN, FP, FN, TP
+        """
+        df_concatenated = pd.concat(
+            [df_users_authorized, df_users_unauthorized], axis=0
+        )
+        true_labels = [True] * len(df_users_authorized) + [False] * len(
+            df_users_unauthorized
+        )
+        predicted_labels = df_concatenated["is_access_granted"].to_list()
+        distances = df_concatenated["distance"]
+
+        non_inf_values = distances.replace([np.inf, -np.inf], np.nan).dropna().unique()
+        non_inf_values_sorted = np.sort(non_inf_values)[::-1]
+        second_max_value = (
+            non_inf_values_sorted[1]
+            if len(non_inf_values_sorted) > 1
+            and len(non_inf_values) != len(distances.unique())
+            else non_inf_values_sorted[0]
+        )  # get valid distances from system
+        distances.replace(
+            [np.inf], second_max_value, inplace=True
+        )  # replace inf distance with max available distance, which is not np.inf -> system errored finding match
+        probabilities = (
+            second_max_value - distances
+        )  # analyze distances as probabilities of accepting by system
+
+        acceptance_threshold_scaled = (
+            self.acceptance_threshold - probabilities.min()
+        ) / (probabilities.max() - probabilities.min())
+        scale_factor = (
+            0.5 / acceptance_threshold_scaled
+        )  # make sure that threshold in in the middle of probabilities
+        probabilities_rescaled = (probabilities - probabilities.min()) * scale_factor
+
+        fpr, tpr, thresholds = roc_curve(true_labels, probabilities_rescaled)
+        plt.figure()
+        plt.plot(fpr, tpr)
+        plt.xlabel("False Positive Rate")
+        plt.ylabel("True Positive Rate")
+        plt.title("ROC Curve")
+        plt.show()
+
+        tn, fp, fn, tp = confusion_matrix(
+            y_true=true_labels, y_pred=predicted_labels
+        ).ravel()
+        return tn, fp, fn, tp
+
     @staticmethod
     def calculate_far_frr(
         df_users_authorized: pd.DataFrame, df_users_unauthorized: pd.DataFrame
-    ):
+    ) -> Tuple[float, float]:
         """
         Function to calculate False Acceptance Rate, False Rejection Rate
 
@@ -169,7 +228,7 @@ class VerificationSystem:
             "020633.jpg",
         )
 
-        def get_problematic_incoming_authorized_user_path(self):
-            return os.path.join(
-                self.database_path, "incoming_users", "authorized_users", "22", "001677.jpg"
-            )
+    def get_problematic_incoming_authorized_user_path(self):
+        return os.path.join(
+            self.database_path, "incoming_users", "authorized_users", "22", "001677.jpg"
+        )
