@@ -63,14 +63,34 @@ else:
             )
         )
 
+        true_negative, false_positive, false_negative, true_positive = (
+            face_verification_system.calculate_ROC_curve(
+                df_authorized_users,
+                df_unauthorized_users,
+            )
+        )
+        accuracy = (true_positive + true_negative) / (
+            true_positive + true_negative + false_positive + false_negative
+        )
+        access_granted_rate = face_verification_system.calculate_access_granted_rate(
+            df_authorized_users
+        )
+
         st.write("## Results")
+
         column_left, column_right = st.columns(2)
 
         with column_left:
             st.write("False Acceptance Rate: ", np.round(false_acceptance_rate, 3))
+            st.write("False Rejection Rate: ", np.round(false_rejection_rate, 3))
+            st.write("Accuracy: ", np.round(accuracy, 3))
+            st.write("Access Granted Rate: ", np.round(access_granted_rate, 3))
 
         with column_right:
-            st.write("False Rejection Rate: ", np.round(false_rejection_rate, 3))
+            st.write("True Negative: ", true_negative)
+            st.write("False Positive: ", false_positive)
+            st.write("False Negative: ", false_negative)
+            st.write("True Positive: ", true_positive)
 
         st.write("### Authorized Users")
         st.dataframe(df_authorized_users)

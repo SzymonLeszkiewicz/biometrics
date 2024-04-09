@@ -2,36 +2,21 @@ import os.path
 
 import streamlit as st
 from PIL import Image
-import numpy as np
+
 from verification_system import VerificationSystem
 
+st.set_page_config(page_title="Add User", page_icon="👁️")
 
-st.set_page_config(page_title="Verify User", page_icon="👁️")
 
+def add_user_images(user_name: str, user_images: list[bytes]):
+    user_directory_path = os.path.join(
+        "data", "database", "authorized_users", user_name
+    )
+    if not os.path.exists(user_directory_path):
+        os.makedirs(user_directory_path, exist_ok=True)
 
-def verify_user(user_name: str, user_image: bytes) -> bool:
-    column_left, column_right = st.columns(2)
-
-    with column_left:
-        st.image(image=user_image, use_column_width="auto")
-
-    try:
-        image = Image.open(user_image)
-        image_array = np.array(image)
-
-        is_verified, _ = face_verification_system.verify_user(
-            user_name=user_name, user_photo_path=image_array
-        )
-
-        with column_right:
-            if is_verified:
-                st.success("Verified")
-            else:
-                st.error("Not Verified")
-        return is_verified
-    except Exception as e:
-        with column_right:
-            st.exception(e)
+    for user_image in user_images:
+        Image.open(user_image).save(os.path.join(user_directory_path, user_image.name))
 
 
 def show_user_images(user_name: str):
@@ -40,7 +25,7 @@ def show_user_images(user_name: str):
     )
     user_images_path = os.listdir(user_directory_path)
 
-    st.write("# User Images")
+    st.write(f"# Images of {user_name}")
 
     number_of_columns = 4
     number_of_images = len(user_images_path)
@@ -62,7 +47,7 @@ def show_user_images(user_name: str):
                 break
 
 
-st.title("Verify User")
+st.title("Add User")
 
 face_verification_system = VerificationSystem(
     database_path=os.path.join("data", "database")
@@ -71,14 +56,21 @@ face_verification_system = VerificationSystem(
 uploaded_name = st.text_input(label="Username")
 
 if uploaded_name:
-    uploaded_image = st.file_uploader(
+    user_directory_path = os.path.join(
+        "data", "database", "authorized_users", uploaded_name
+    )
+    if os.path.exists(user_directory_path):
+        st.toast("Welcome back 👋")
+    else:
+        st.toast("Create profile by uploading images 👋")
+
+    uploaded_images = st.file_uploader(
         label="Choose an image...",
         type=["jpg", "jpeg", "png"],
+        accept_multiple_files=True,
         label_visibility="hidden",
     )
 
-    if uploaded_image is not None:
-        is_verified = verify_user(user_name=uploaded_name, user_image=uploaded_image)
-
-        if is_verified:
-            show_user_images(user_name=uploaded_name)
+    if uploaded_images:
+        add_user_images(user_name=uploaded_name, user_images=uploaded_images)
+        show_user_images(user_name=uploaded_name)

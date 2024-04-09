@@ -1,13 +1,13 @@
 import os
 from pathlib import Path
+from typing import Tuple
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from deepface import DeepFace
 from sklearn.metrics import confusion_matrix, roc_curve
 from tqdm.autonotebook import tqdm
-import matplotlib.pyplot as plt
-from typing import Tuple
 
 """
 Current database format
