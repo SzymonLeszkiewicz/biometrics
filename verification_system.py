@@ -227,8 +227,8 @@ class VerificationSystem:
 
         tpr = tp / (tp + fn)
         fpr = fp / (fp + tn)
-        far = 1 - tpr
-        frr = fpr
+        frr = 1 - tpr
+        far = fpr
         return far, frr
 
     def get_incoming_authorized_user_path(self) -> str:
