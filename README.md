@@ -4,9 +4,10 @@ Authors: *Jakub Polczyk*, *Szymon Leszkiewicz*, *Kacper Kozaczko*
 
 ## Table of Contents
 1. [Project description](#Project-description)
-2. [How to run the app?](#How-to-run-the-app)
-3. [App Screenshots](#App-Screenshots)
-4. [Experiments results](#Experiments-results)
+2. [System requirements](#System-requirements)
+3. [How to run the app?](#How-to-run-the-app)
+4. [App Screenshots](#App-Screenshots)
+5. [Experiments results](#Experiments-results)
    1. [System's metrices tested on authorized users](#Systems-metrices-tested-on-authorized-users)
    2. [System's metrices tested on authorized users and unauthorized users](#Systems-metrices-tested-on-authorized-and-unauthorized-users)
    3. [System's metrices tested on images with Gaussian Noise](#Systems-metrices-tested-on-images-with-Gaussian-Noise)
@@ -16,6 +17,7 @@ Authors: *Jakub Polczyk*, *Szymon Leszkiewicz*, *Kacper Kozaczko*
 The aim of the project is to use the user authorization system in
 based on facial biometrics and testing the system's resistance to interference. Project developed in Python, using **CelebA** dataset and **DeepFace** model. System should be as secure as possible, therefore it should never accept unauthorized users.
 
+## System Requirements
 - System design
 - Testing the system for user acceptance
 - Examine the system for noisy user photos
